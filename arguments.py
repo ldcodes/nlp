@@ -7,6 +7,7 @@
 '''
 import tensorflow as tf
 
+
 BERT_BASE_DIR = './chinese_L-12_H-768_A-12/'
 arg_dic = {
     "data_dir": './data/real',              # 数据目录
