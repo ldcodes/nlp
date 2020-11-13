@@ -1,0 +1,7 @@
+bert_pretrain/bert-base-chinese.tar.gz
+bert_pretrain/bert_config.json
+*.bin
+real/saved_dict/*
+real/data/*.csv
+real/data/*.txt
+cnews.*
