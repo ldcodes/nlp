@@ -13,16 +13,16 @@ tiny_mode = False
 tiny_pre = 'tiny_'
 
 keyword_num = {
-    "财经" : 30,
+    "财经" : 50,
     "时政" : 50,
-    "房产" : 30,
+    "房产" : 50,
     "科技" : 50,
     "教育" : 50,
-    "时尚" : 30,
-    "游戏" : 20,
-    "家居" : 30,
+    "时尚" : 50,
+    "游戏" : 50,
+    "家居" : 50,
     "体育" : 50,
-    "娱乐" : 30,
+    "娱乐" : 50,
 }
 
 
@@ -93,30 +93,29 @@ unlabeled_data['label_content'] = unlabeled_data.apply(lambda v:cal_label(
 # 对于无标签的数据进行分类的结果，30000个数据中14900个无法判断类别：
 print (unlabeled_data['label_content'].value_counts())
 
-# 增加游戏类别的数据
-game_set = unlabeled_data[unlabeled_data['label_content']=='游戏']
-# print(type(game_set), len(game_set))
-# print(game_set.columns())
-# game_set = game_set.values.tolist()
-# print(game_set[0])
-# print('\n' * 10)
-# print(game_set)
+label_num = {
+    "财经" : 1000,
+    "时政" : 1500,
+    "房产" : 2500,
+    "科技" : 1500,
+    "教育" : 3000,
+    "时尚" : 1500,
+    "游戏" : 2500,
+    "家居" : 1500,
+    "体育" : 1500,
+    "娱乐" : 2500,
+}
 
-game_set1 = game_set.loc[:, ['id', 'label_content', 'content']]
-game_set1.columns = ['id', 'class_label', 'content']
-dataset = dataset.append(game_set1, ignore_index=True)
+label_list = ['游戏', '教育', '房产', '体育', '娱乐']
+def add_data(unlabeled_data, label_list):
+    global dataset
+    for label in label_list:
+        label_set = unlabeled_data[unlabeled_data['label_content']==label]
+        label_set1 = label_set.loc[:, ['id', 'label_content', 'content']]
+        label_set1.columns = ['id', 'class_label', 'content']
+        dataset = dataset.append(label_set1, ignore_index=True)
 
-# 增加娱乐类别的数据
-joy_set = unlabeled_data[unlabeled_data['label_content']=='娱乐']
-joy_set1 = joy_set.loc[:, ['id', 'label_content', 'content']]
-joy_set1.columns = ['id', 'class_label', 'content']
-dataset = dataset.append(joy_set1, ignore_index=True)
-
-# 增加体育类别的数据
-sports_set = unlabeled_data[unlabeled_data['label_content']=='体育']
-sports_set1 = sports_set.loc[:, ['id', 'label_content', 'content']]
-sports_set1.columns = ['id', 'class_label', 'content']
-dataset = dataset.append(sports_set1, ignore_index=True)
+add_data(unlabeled_data, label_list)
 
 dataset.to_csv(data_path+'labeled_data_with_10_classes.csv')
 
@@ -138,12 +137,14 @@ with open(data_path+'labeled_data_with_10_classes.csv', 'w') as fout:
     cnt = 0
     for line in lines:
         pos = line.find(',')
-        fout.write(str(cnt) + line[pos:])
         label = line[pos+1:pos+3]
+        label_num[label] -= 1
+        if label_num[label] < 0:
+            continue
         if label in label_count:
-
             label_count[label] += 1
         else:
             label_count[label] = 1
+        fout.write(str(cnt) + line[pos:])
         cnt += 1
 print(label_count)

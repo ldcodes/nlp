@@ -43,8 +43,11 @@ train_data_percent = 0.8
 dev_data_percent = 0.1
 test_data_percent = 0.1
 
-# 对数据集切割 还是 不切割
-cut_type = False
+# 对数据集切割方法
+# 1 -> 切成很多段
+# 2 -> 不切割
+# 3 -> 切成最多三段
+cut_type = 3
 
 
 # [(id, class_name, para)]
@@ -106,10 +109,13 @@ def filter_stop_words(para):
     # para = para.replace('\n', '')
     para = para.replace('\u3000', '')
     para = para.replace('\xa0', '')
+    para = para.replace('\xad', '')
+    from stopWord.stop_word import del_stop_word
+    del_stop_word(para)
     return para
 
 # 把很长的一段话分成符合bert长度要求的若干段话
-def cut_para (para):
+def cut_para_many_times (para):
     if len(para) < max_length:
         para = filter_stop_words(para)
         para = list(map(str, para.split('\n')))
@@ -135,6 +141,42 @@ def filter_para(para):
     para = para.replace('\n','')
     return [para]
 
+# 分成x段, x <= 3?
+# 可能会捕捉到头尾以及中间的信息
+def cut_para_few_times(para, times=3):
+    def deal_with_pref(para2):
+        pos = para2.find('。')
+        pos = min(pos, para2.find('！'))
+        pos = min(pos, para2.find('？'))
+        pos = min(pos, para2.find('?'))
+        pos = min(pos, para2.find('.'))
+        return para2[pos+1:]
+
+    if times == 1 or times == 2 or times == 3:
+        pass
+    else:
+        raise ValueError
+    if len(para) < max_length:
+        para = filter_stop_words(para)
+        return [para.replace('\n','')]
+    while times * max_length > len(para) and times > 1:
+        times -= 1
+    if times == 1:
+        para = filter_stop_words(para)
+        return [para.replace('\n','')]
+    elif times == 2:
+        para1 = filter_stop_words(para[:len(para)//2])
+        para2 = filter_stop_words(para[len(para)//2+1:])
+        para2 = deal_with_pref(para2)
+        return [para1.replace('\n',''), para2.replace('\n','')]
+    else:
+        para1 = filter_stop_words(para[:len(para)//3])
+        para2 = filter_stop_words(para[len(para)//3+1:len(para)//3*2])
+        para3 = filter_stop_words(para[len(para)//3*2+1:])
+        para2 = deal_with_pref(para2)
+        para3 = deal_with_pref(para3)
+        return [para1.replace('\n',''), para2.replace('\n',''), para3.replace('\n','')]
+
 def read_cnews_txt(input_file):
     data = []
     with open(input_file, 'r') as fin:
@@ -148,7 +190,7 @@ def read_cnews_txt(input_file):
                 continue
             data.append((y, label2num[x]))
     print('test_data : ')
-    print(data)
+    # print(data)
     return data
 
 def main():
@@ -157,20 +199,25 @@ def main():
 
     data = []
 
+    print('filter stop words ...')
     # 切割段落生成多个data
     for id, label, para in labeled_data:
-        if cut_type == True:
-            para = cut_para(para)
-        else:
+        if cut_type == 1:
+            para = cut_para_many_times(para)
+        elif cut_type == 2:
             para = filter_para(para)
+        elif cut_type == 3:
+            para = cut_para_few_times(para)
+        else:
+            raise ValueError
         for x in para:
             if len(x) < min_length:
                 continue
             if x in token_ends:
                 continue
             data.append((x, label2num[label]))
-        print(para)
-
+        # print(para)
+    print('Done!')
 
     print('\nwriting class.txt ...')
     # 写class.txt

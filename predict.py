@@ -5,7 +5,7 @@ import time
 from utils import build_iterator, get_time_dif
 from importlib import import_module
 from tqdm import tqdm
-from generate_data import cut_para
+from generate_data import cut_para_many_times
 
 
 PAD, CLS = '[PAD]', '[CLS]'  # padding符号, bert中综合信息符号
@@ -188,7 +188,7 @@ class Predict_Cut_Paras():
                 pos = lin.find(',')
                 id = lin[:pos]
                 content = lin[pos + 1:]
-                paras = cut_para(content)
+                paras = cut_para_many_times(content)
                 for para in paras:
                     #if len(para) < min_length:
                     #    continue
@@ -353,11 +353,11 @@ def main():
 
 
 
-    # # predict_baseline 方法
+    # predict_baseline 方法
     # baseline_method(x, config, dataset)
 
     # predict_cut_paras 方法
-    cut_paras_method(x, config, dataset, type=3)
+    cut_paras_method(x, config, dataset, type=1)
 
 
 
