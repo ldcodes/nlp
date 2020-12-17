@@ -143,7 +143,7 @@ class Predict_Baseline():
         return predict_labels
 
     def write_csv(self, labels, path):
-        with open(path, 'w') as fout:
+        with open(path, 'w',encoding="utf-8") as fout:
             cnt = 0
 
             fout.write('id,class_label,rank_label'+'\n')
@@ -277,7 +277,7 @@ class Predict_Cut_Paras():
         print(labels)
         # assert 10 * len(ids) == len(labels)
         cnt = 0
-        with open(path, 'w') as fout:
+        with open(path, 'w',encoding="utf-8") as fout:
             fout.write('id,class_label,rank_label'+'\n')
             i = 0
             while i < len(ids):

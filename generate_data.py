@@ -7,32 +7,32 @@ import tqdm
 import jieba
 
 label2class = {
-    "财经" : "高风险",
-    "时政" : "高风险",
-    "房产" : "中风险",
-    "科技" : "中风险",
-    "教育" : "低风险",
-    "时尚" : "低风险",
-    "游戏" : "低风险",
-    "家居" : "可公开",
-    "体育" : "可公开",
-    "娱乐" : "可公开",
+    "财经": "高风险",
+    "时政": "高风险",
+    "房产": "中风险",
+    "科技": "中风险",
+    "教育": "低风险",
+    "时尚": "低风险",
+    "游戏": "低风险",
+    "家居": "可公开",
+    "体育": "可公开",
+    "娱乐": "可公开",
 }
 label2num = {
-    "财经" : 0,
-    "时政" : 1,
-    "房产" : 2,
-    "科技" : 3,
-    "教育" : 4,
-    "时尚" : 5,
-    "游戏" : 6,
-    "家居" : 7,
-    "体育" : 8,
-    "娱乐" : 9,
+    "财经": 0,
+    "时政": 1,
+    "房产": 2,
+    "科技": 3,
+    "教育": 4,
+    "时尚": 5,
+    "游戏": 6,
+    "家居": 7,
+    "体育": 8,
+    "娱乐": 9,
 }
 
 # 句子的结束标识
-token_ends = ['。','？','！','；','  ','》','】',']','}',')','.','?','!',';','\u3000','\t','\n']
+token_ends = ['。', '？', '！', '；', '  ', '》', '】', ']', '}', ')', '.', '?', '!', ';', '\u3000', '\t', '\n']
 
 # 句子最长的长度
 max_length = 128
@@ -47,12 +47,13 @@ test_data_percent = 0.1
 # 1 -> 切成很多段
 # 2 -> 不切割
 # 3 -> 切成最多三段
-cut_type = 3
+# 4 -> 提取重要的句子
+cut_type = 4
 
 
 # [(id, class_name, para)]
 def read_labeled_csv(input_filename):
-    with open(input_filename, 'r') as fin:
+    with open(input_filename, 'r', encoding="utf-8") as fin:
         data = []
         cnt = 0
         for line in fin:
@@ -63,10 +64,11 @@ def read_labeled_csv(input_filename):
             id = line[0:pos]
             # print(id)
             id = int(id)
-            class_name = line[pos+1:pos+3]
-            text = line[pos+4:]
+            class_name = line[pos + 1:pos + 3]
+            text = line[pos + 4:]
             data.append((id, class_name, text))
     return data
+
 
 # [(id, para)]
 def read_unlabeled_csv(input_filename):
@@ -81,9 +83,10 @@ def read_unlabeled_csv(input_filename):
             id = line[0:pos]
             # print(id)
             id = int(id)
-            text = line[pos+1:]
+            text = line[pos + 1:]
             data.append((id, text))
     return data
+
 
 # 过滤停用词
 def filter_stop_words(para):
@@ -114,20 +117,21 @@ def filter_stop_words(para):
     del_stop_word(para)
     return para
 
+
 # 把很长的一段话分成符合bert长度要求的若干段话
-def cut_para_many_times (para):
+def cut_para_many_times(para):
     if len(para) < max_length:
         para = filter_stop_words(para)
         para = list(map(str, para.split('\n')))
         return para
     para = filter_stop_words(para)
-    para = list(map(str,para.split('\n')))
+    para = list(map(str, para.split('\n')))
     ans = []
     i = 0
     while i < len(para):
         length = len(para[i])
         paras = para[i]
-        while i+1 < len(para) and length+len(para[i+1]) < max_length:
+        while i + 1 < len(para) and length + len(para[i + 1]) < max_length:
             i += 1
             paras += para[i]
             length += len(para[i])
@@ -135,11 +139,13 @@ def cut_para_many_times (para):
         i += 1
     return ans
 
+
 # 不切割只过滤停用词
 def filter_para(para):
     para = filter_stop_words(para)
-    para = para.replace('\n','')
+    para = para.replace('\n', '')
     return [para]
+
 
 # 分成x段, x <= 3?
 # 可能会捕捉到头尾以及中间的信息
@@ -150,7 +156,7 @@ def cut_para_few_times(para, times=3):
         pos = min(pos, para2.find('？'))
         pos = min(pos, para2.find('?'))
         pos = min(pos, para2.find('.'))
-        return para2[pos+1:]
+        return para2[pos + 1:]
 
     if times == 1 or times == 2 or times == 3:
         pass
@@ -158,34 +164,78 @@ def cut_para_few_times(para, times=3):
         raise ValueError
     if len(para) < max_length:
         para = filter_stop_words(para)
-        return [para.replace('\n','')]
+        return [para.replace('\n', '')]
     while times * max_length > len(para) and times > 1:
         times -= 1
     if times == 1:
         para = filter_stop_words(para)
-        return [para.replace('\n','')]
+        return [para.replace('\n', '')]
     elif times == 2:
-        para1 = filter_stop_words(para[:len(para)//2])
-        para2 = filter_stop_words(para[len(para)//2+1:])
+        para1 = filter_stop_words(para[:len(para) // 2])
+        para2 = filter_stop_words(para[len(para) // 2 + 1:])
         para2 = deal_with_pref(para2)
-        return [para1.replace('\n',''), para2.replace('\n','')]
+        return [para1.replace('\n', ''), para2.replace('\n', '')]
     else:
-        para1 = filter_stop_words(para[:len(para)//3])
-        para2 = filter_stop_words(para[len(para)//3+1:len(para)//3*2])
-        para3 = filter_stop_words(para[len(para)//3*2+1:])
+        para1 = filter_stop_words(para[:len(para) // 3])
+        para2 = filter_stop_words(para[len(para) // 3 + 1:len(para) // 3 * 2])
+        para3 = filter_stop_words(para[len(para) // 3 * 2 + 1:])
         para2 = deal_with_pref(para2)
         para3 = deal_with_pref(para3)
-        return [para1.replace('\n',''), para2.replace('\n',''), para3.replace('\n','')]
+        return [para1.replace('\n', ''), para2.replace('\n', ''), para3.replace('\n', '')]
+
+
+def sort_dict(dicts, count):
+    # 获取前几名的key
+    final_result = []
+    sorted_dic = sorted([(k, v) for k, v in dicts.items()], reverse=True)
+    t_set = set()
+    for item in sorted_dic:
+        t_set.add(item[1])
+    for list_item in sorted(t_set, reverse=True)[:count]:
+        for dic_item in sorted_dic:
+            if dic_item[1] == list_item:
+                final_result.append(dic_item[0])
+    return final_result
+
+
+def cut_para_by_summary(para):
+    para = filter_stop_words(para)
+    para = para.replace('\n', '')
+    para = para.replace("\u2003", "")
+    sentences = re.split('。|！|\!|\.|？|\?|；', para)  # 切分一句话
+    word2count = {}
+    for word in jieba.cut(para):  # 一句话分词
+
+        if word not in word2count.keys():
+            word2count[word] = 1
+        else:
+            word2count[word] += 1
+    for key in word2count.keys():
+        word2count[key] = word2count[key] / max(word2count.values())
+    # print(word2count)
+    sent2score = {}
+    for sentence in sentences:
+        for word in jieba.cut(sentence):
+            if word in word2count.keys():
+                if len(sentence) < 300:
+                    if sentence not in sent2score.keys():
+                        sent2score[sentence] = word2count[word]
+                    else:
+                        sent2score[sentence] += word2count[word]
+    # print(sent2score)
+    para = sort_dict(sent2score, 1)  # 可以生成相关的前几个句子，这里感觉还是越精简越好一些
+    return para
+
 
 def read_cnews_txt(input_file):
     data = []
-    with open(input_file, 'r') as fin:
+    with open(input_file, 'r', encoding="utf-8") as fin:
         for line in fin:
             x, y = line.split('\t')
-            y = y.replace('\t','')
-            y = y.replace('\n','')
-            y = y.replace('\u3000','')
-            y = y.replace('\xa0','')
+            y = y.replace('\t', '')
+            y = y.replace('\n', '')
+            y = y.replace('\u3000', '')
+            y = y.replace('\xa0', '')
             if len(y) < min_length:
                 continue
             data.append((y, label2num[x]))
@@ -193,8 +243,8 @@ def read_cnews_txt(input_file):
     # print(data)
     return data
 
-def main():
 
+def main():
     labeled_data = read_labeled_csv('real/data/labeled_data_with_10_classes.csv')
 
     data = []
@@ -208,6 +258,8 @@ def main():
             para = filter_para(para)
         elif cut_type == 3:
             para = cut_para_few_times(para)
+        elif cut_type == 4:
+            para = cut_para_by_summary(para)
         else:
             raise ValueError
         for x in para:
@@ -217,6 +269,7 @@ def main():
                 continue
             data.append((x, label2num[label]))
         # print(para)
+
     print('Done!')
 
     print('\nwriting class.txt ...')
@@ -229,28 +282,32 @@ def main():
     random.shuffle(data)
 
     # 测试集换成新的
-    train_data = data[:int(train_data_percent*len(data))]
-    dev_data = data[int(train_data_percent*len(data)):]
+    train_data = data[:int(train_data_percent * len(data))]
+    dev_data = data[int(train_data_percent * len(data)):]
     test_data = read_cnews_txt('cnews/cnews.test.txt')
 
-
-    print('\ndata size:',len(data))
-    print('train_data size:',len(train_data))
-    print('dev_data size:',len(dev_data))
-    print('test_data size:',len(test_data))
+    print('\ndata size:', len(data))
+    print('train_data size:', len(train_data))
+    print('dev_data size:', len(dev_data))
+    print('test_data size:', len(test_data))
     print('\nwriting train/dev/test data ...')
-    with open('real/data/train.txt', 'w') as fout:
+    with open('real/data/train.txt', 'w', encoding="utf-8") as fout:
         for x, y in train_data:
             if len(x) > 2:
                 fout.write(x + '\t' + str(y) + '\n')
-    with open('real/data/dev.txt', 'w') as fout:
+    with open('real/data/dev.txt', 'w', encoding="utf-8") as fout:
         for x, y in dev_data:
             if len(x) > 2:
                 fout.write(x + '\t' + str(y) + '\n')
-    with open('real/data/test.txt', 'w') as fout:
+    with open('real/data/test.txt', 'w', encoding="utf-8") as fout:
         for x, y in test_data:
             if len(x) > 2:
                 fout.write(x + '\t' + str(y) + '\n')
+    # 后续作文本增强的生成的文件
+    # with open('real/data/train2.txt', 'w', encoding="utf-8") as fout:
+    #     for x, y in train_data:
+    #         if len(x) > 2:
+    #             fout.write(str(y) + '\t' + x + '\n')
     print('Done!')
 
 
