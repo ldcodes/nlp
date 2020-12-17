@@ -62,7 +62,7 @@ def train(config, model, train_iter, dev_iter, test_iter):
                 train_acc = metrics.accuracy_score(true, predic)
                 train_f1 = metrics.f1_score(true,predic,average='macro')
                 dev_acc, dev_f1, dev_loss = evaluate(config, model, dev_iter)
-                if (dev_loss < dev_best_loss) or (dev_loss == dev_best_loss and dev_f1 < dev_best_f1):
+                if dev_loss < dev_best_loss:
                     dev_best_loss = dev_loss
                     torch.save(model.state_dict(), config.save_path)
                     improve = '*'
