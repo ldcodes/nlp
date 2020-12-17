@@ -2,7 +2,7 @@ import jieba
 
 # 创建停用词列表
 def stopwordslist():
-    stopwords = [line.strip() for line in open('1.txt',encoding='UTF-8').readlines()]
+    stopwords = [line.strip() for line in open('stopWord/hit_stopwords.txt',encoding='UTF-8').readlines()]
     return stopwords
 
 
